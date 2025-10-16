@@ -154,8 +154,39 @@ enum NASAPowerDirect {
             }
         }
 
-        // Compute odds using existing logic by reusing fetchAndCompute to avoid duplication
-        let odds = try await fetchAndCompute(coord: coord, date: date, maxHotC: maxHotC, minColdC: minColdC, maxRainMM: maxRainMM, maxWindKPH: maxWindKPH)
+        let n = max(rows.count, 1)
+        func pct(_ count: Int) -> Double { (Double(count) / Double(n)) * 100.0 }
+
+        var odds: [OddsResult] = []
+
+        if let hot = maxHotC {
+            let count = rows.filter { $0.tmax > hot }.count
+            odds.append(.init(label: "Too hot > \(Int(hot)) °C",
+                             valuePercent: pct(count),
+                             note: "Historical odds of hotter-than-threshold.",
+                             systemIcon: "thermometer.sun"))
+        }
+        if let cold = minColdC {
+            let count = rows.filter { $0.tmin < cold }.count
+            odds.append(.init(label: "Too cold < \(Int(cold)) °C",
+                             valuePercent: pct(count),
+                             note: "Historical odds of colder-than-threshold.",
+                             systemIcon: "thermometer.snowflake"))
+        }
+        if let r = maxRainMM {
+            let count = rows.filter { $0.p >= r }.count
+            odds.append(.init(label: "Rain ≥ \(Int(r)) mm",
+                             valuePercent: pct(count),
+                             note: "Daily precipitation exceedance odds.",
+                             systemIcon: "cloud.rain"))
+        }
+        if let w = maxWindKPH {
+            let count = rows.filter { $0.windKph >= w }.count
+            odds.append(.init(label: "Wind ≥ \(Int(w)) km/h",
+                             valuePercent: pct(count),
+                             note: "Daily wind exceedance odds.",
+                             systemIcon: "wind"))
+        }
 
         guard !rows.isEmpty else {
             return (odds, nil)
